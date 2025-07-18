@@ -5,6 +5,7 @@ import math
 from typing import Sequence, List
 from torch.utils.data import Sampler
 from tqdm import tqdm
+from sklearn.decomposition import PCA
 
 def create_fixed_proportion_batches(dataset, teacher_probs_list, bag_size, num_classes):
     """Return a FixedBatchSampler where each batch matches the given proportions."""
@@ -111,3 +112,22 @@ def create_random_bags(dataset, bag_size, num_classes, shuffle=True):
     sampler = FixedBatchSampler(batches)
     teacher_tensor = torch.stack(teacher_props)
     return sampler, teacher_tensor
+
+
+def load_pt_features(train_path: str, test_path: str, pca_dim: int | None = None):
+    """Load feature tensors from ``.pt`` files and optionally apply PCA."""
+    train_data = torch.load(train_path)
+    test_data = torch.load(test_path)
+
+    X_train = train_data["features"].cpu().numpy()
+    y_train = train_data["labels"].cpu().numpy()
+    X_test = test_data["features"].cpu().numpy()
+    y_test = test_data["labels"].cpu().numpy()
+
+    if pca_dim is not None:
+        pca = PCA(n_components=pca_dim, random_state=42)
+        X_train = pca.fit_transform(X_train)
+        X_test = pca.transform(X_test)
+        print(f"PCA reduced shape: {X_train.shape}")
+
+    return X_train, X_test, y_train, y_test

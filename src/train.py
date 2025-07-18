@@ -1,11 +1,11 @@
 import numpy as np
-from sklearn import datasets
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
+
 from config import (
-    TEST_SIZE,
-    RANDOM_STATE,
+    TRAIN_DATA_PATH,
+    TEST_DATA_PATH,
+    PCA_DIM,
     SEED,
     NQUBIT,
     C_DEPTH,
@@ -13,21 +13,17 @@ from config import (
 )
 
 from qcl_classification import QclClassification
+from data_utils import load_pt_features
 
 
 def main():
-    # Load iris dataset
-    iris = datasets.load_iris()
-    x = iris.data
-    y = iris.target
-
-    # Split into train and test sets
-    x_train, x_test, y_train_label, y_test_label = train_test_split(
-        x, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
+    # Load features stored in .pt files
+    x_train, x_test, y_train_label, y_test_label = load_pt_features(
+        TRAIN_DATA_PATH, TEST_DATA_PATH, PCA_DIM
     )
 
     # One-hot encode labels
-    num_class = len(np.unique(y))
+    num_class = len(np.unique(y_train_label))
     y_train = np.eye(num_class)[y_train_label]
     y_test = np.eye(num_class)[y_test_label]
 
