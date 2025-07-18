@@ -1,5 +1,5 @@
 # Use a PyTorch image with CUDA support so GPU acceleration is available.
-FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install required Python packages (except qiskit-aer, we'll build that manually)
 RUN pip install --no-cache-dir \
-    qulacs-gpu==0.6.12\
+    qulacs==0.6.12\
     pytest==8.3.5 \
     matplotlib \
     torchvision==0.16.0 \
