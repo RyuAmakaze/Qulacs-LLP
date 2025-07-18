@@ -8,7 +8,7 @@ Qulacsを使ったLLP
    ```
 2. 作業ディレクトリをコンテナにマウントして学習を実行します。GPU を利用する場合は `--gpus all` を指定します。
    ```bash
-   docker run --rm --shm-size=2g --gpus all -v $(pwd):/app -w /app qulacs-llp python src/train.py
+   docker run --rm --shm-size=2g --gpus all -v $(pwd):/app -w /app qulacs-llp python -u src/train.py
    ```
 
 Dockerに入るだけ
