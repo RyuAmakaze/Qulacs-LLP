@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install required Python packages (except qiskit-aer, we'll build that manually)
 RUN pip install --no-cache-dir \
-    qulacs==0.6.12\
+    qulacs-gpu==0.6.12\
     pytest==8.3.5 \
     matplotlib \
     torchvision==0.16.0 \
