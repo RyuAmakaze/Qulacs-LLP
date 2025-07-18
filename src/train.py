@@ -3,6 +3,15 @@ from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
+from config import (
+    TEST_SIZE,
+    RANDOM_STATE,
+    SEED,
+    NQUBIT,
+    C_DEPTH,
+    MAX_ITER,
+)
+
 from qcl_classification import QclClassification
 
 
@@ -14,7 +23,7 @@ def main():
 
     # Split into train and test sets
     x_train, x_test, y_train_label, y_test_label = train_test_split(
-        x, y, test_size=0.3, random_state=0, stratify=y
+        x, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
     )
 
     # One-hot encode labels
@@ -23,15 +32,15 @@ def main():
     y_test = np.eye(num_class)[y_test_label]
 
     # Initialize random seed used in QCL parameters
-    np.random.seed(0)
+    np.random.seed(SEED)
 
     # Setup quantum circuit parameters
-    nqubit = 4
-    c_depth = 4
+    nqubit = NQUBIT
+    c_depth = C_DEPTH
 
     # Create QCL model and train
     qcl = QclClassification(nqubit, c_depth, num_class)
-    _, _, theta_opt = qcl.fit(x_train, y_train, maxiter=100)
+    _, _, theta_opt = qcl.fit(x_train, y_train, maxiter=MAX_ITER)
 
     # Evaluate accuracy
     qcl.set_input_state(x_train)
