@@ -4,7 +4,7 @@ Qulacsを使ったLLP
 ## Dockerで
 1. Docker イメージをビルドします。
    ```bash
-   docker build -t q-llp -f Dockerfile/Dockerfile .
+   docker build -t qulacs-llp -f Dockerfile/Dockerfile .
    ```
 2. 作業ディレクトリをコンテナにマウントして学習を実行します。GPU を利用する場合は `--gpus all` を指定します。
    ```bash
