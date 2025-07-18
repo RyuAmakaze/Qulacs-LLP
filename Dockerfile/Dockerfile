@@ -11,17 +11,17 @@ RUN apt-get update && apt-get install -y \
 
 # Install required Python packages (except qiskit-aer, we'll build that manually)
 RUN pip install --no-cache-dir \
-    qiskit==1.2.0 \
+    qulacs==0.6.12\
     pytest==8.3.5 \
     matplotlib \
     torchvision==0.16.0 \
     tqdm \
     pylatexenc \
-    qiskit-aer-gpu \
+    scikit-learn==1.7.0\
     xformers \
     debugpy \
     dotenv \
-    qiskit-machine-learning
+    numpy==1.26.0
 
 # Copy your project code
 COPY . /app
