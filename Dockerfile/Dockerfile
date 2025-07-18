@@ -39,7 +39,8 @@ RUN git clone --recursive https://github.com/qulacs/qulacs.git && \
     cmake .. -DUSE_GPU=ON -DCMAKE_BUILD_TYPE=Release && \
     make -j && \
     cmake --install . && \
-    export PYTHONPATH=/usr/local/lib/python3.10/site-packages:$PYTHONPATH
+    cd ../python && \
+    pip install .
 
 # 💾 プロジェクトコードをコピー
 COPY . /app
