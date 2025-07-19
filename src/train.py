@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.metrics import accuracy_score
 
-
 from config import (
     TRAIN_DATA_PATH,
     TEST_DATA_PATH,
@@ -14,9 +13,12 @@ from config import (
 
 from qcl_classification import QclClassification
 from data_utils import load_pt_features
-
+from qulacs import QuantumStateGpu
 
 def main():
+    state = QuantumStateGpu(NQUBIT)  # ← GPU版ではこれも自動で GPU 実装に切り替わる
+    print(state.get_device_name())
+
     # Load features stored in .pt files
     x_train, x_test, y_train_label, y_test_label = load_pt_features(
         TRAIN_DATA_PATH, TEST_DATA_PATH, PCA_DIM
