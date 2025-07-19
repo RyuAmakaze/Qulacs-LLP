@@ -9,8 +9,8 @@ TEST_SIZE = 0.3
 RANDOM_STATE = 0
 # 量子回路の初期パラメータ生成に用いる乱数シード
 SEED = 0
-# 使用する量子ビット数 >PCA_DIM
-NQUBIT = 10
+# 使用する量子ビット数
+NQUBIT = 4
 # 出力回路の深さ
 C_DEPTH = 4
 # パラメータ最適化の最大イテレーション回数
@@ -21,4 +21,4 @@ TRAIN_DATA_PATH = "data/CIFAR10_test_features.pt"
 TEST_DATA_PATH = "data/CIFAR10_test_features.pt"
 
 # Dimensionality after PCA compression
-PCA_DIM = 10
+PCA_DIM = 4
