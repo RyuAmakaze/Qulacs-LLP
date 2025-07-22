@@ -7,6 +7,23 @@ from torch.utils.data import Sampler
 from tqdm import tqdm
 from sklearn.decomposition import PCA
 
+def compute_proportions(labels, num_classes):
+    """Compute normalized label counts for a batch."""
+    counts = torch.bincount(labels, minlength=num_classes).float()
+    return counts / counts.sum()
+
+class FixedBatchSampler(Sampler[List[int]]):
+    """Yield predefined lists of indices as batches."""
+
+    def __init__(self, batches: Sequence[Sequence[int]]):
+        self.batches = [list(b) for b in batches]
+
+    def __iter__(self):
+        return iter(self.batches)
+
+    def __len__(self):
+        return len(self.batches)
+
 def create_fixed_proportion_batches(dataset, teacher_probs_list, bag_size, num_classes):
     """Return a FixedBatchSampler where each batch matches the given proportions."""
     dataset_indices = list(range(len(dataset)))
