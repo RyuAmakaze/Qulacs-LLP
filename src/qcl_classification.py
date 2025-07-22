@@ -4,6 +4,8 @@ from sklearn.metrics import log_loss
 from scipy.optimize import minimize
 from qcl_utils import create_time_evol_gate, min_max_scaling, softmax
 
+from tqdm import tqdm
+
 
 class QclClassification:
     """ quantum circuit learningを用いて分類問題を解く"""
@@ -101,7 +103,7 @@ class QclClassification:
 
         res = []
         # 出力状態計算 & 観測
-        for st in st_list:
+        for st in tqdm(st_list, desc="pred instance"):
             # U_outで状態を更新
             self.output_gate.update_quantum_state(st)
             # モデルの出力
