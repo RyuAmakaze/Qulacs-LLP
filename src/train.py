@@ -13,10 +13,11 @@ from config import (
 
 from qcl_classification import QclClassification
 from data_utils import load_pt_features
-from qulacs import QuantumStateGpu
+from qulacs import QuantumState, QuantumStateGpu
+from config import USE_GPU
 
 def main():
-    state = QuantumStateGpu(NQUBIT)  # ← GPU版ではこれも自動で GPU 実装に切り替わる
+    state = QuantumStateGpu(NQUBIT) if USE_GPU else QuantumState(NQUBIT)
     print(state.get_device_name())
 
     # Load features stored in .pt files

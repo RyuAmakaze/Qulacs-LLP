@@ -4,6 +4,9 @@ Qulacsを使ったLLP
 GPUアクセラレーションを利用するため、Docker イメージでは `qulacs-gpu`
 をインストールしています。
 
+`src/config.py` の `USE_GPU` を `True` にすると、量子状態の計算で GPU 実装
+を使用します。CPU で実行する場合は `False` にしてください。
+
 ## Dockerで
 1. Docker イメージをビルドします。
    ```bash

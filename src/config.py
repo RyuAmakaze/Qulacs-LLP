@@ -22,3 +22,6 @@ TEST_DATA_PATH = "data/CIFAR10_test_features.pt"
 
 # Dimensionality after PCA compression
 PCA_DIM = 4
+
+# Whether to use GPU acceleration with qulacs
+USE_GPU = False
