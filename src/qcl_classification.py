@@ -1,5 +1,10 @@
 import numpy as np
+from config import USE_GPU
 from qulacs import QuantumState, Observable, QuantumCircuit, ParametricQuantumCircuit
+try:
+    from qulacs import QuantumStateGpu
+except ImportError:  # CPU-only installation
+    QuantumStateGpu = QuantumState
 from sklearn.metrics import log_loss
 from scipy.optimize import minimize
 from qcl_utils import create_time_evol_gate, min_max_scaling, softmax
@@ -58,8 +63,10 @@ class QclClassification:
         
         st_list = []
         
+        state_cls = QuantumStateGpu if USE_GPU else QuantumState
+
         for x in x_list_normalized:
-            st = QuantumState(self.nqubit)
+            st = state_cls(self.nqubit)
             input_gate = self.create_input_gate(x)
             input_gate.update_quantum_state(st)
             st_list.append(st.copy())
