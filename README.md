@@ -20,6 +20,8 @@ LLP 学習を行う場合は ``train_llp.py`` を実行します。
 docker run --rm --gpus all -v $(pwd):/app -w /app qulacs-llp python -u src/train_llp.py
 ```
 
+`config.py` で `BAG_SIZE` や並列計算用の `N_WORKERS` を調整できます。
+
 Dockerに入るだけ
 ```bash
 docker run --rm --gpus all -v $(pwd):/app -w /app -it qulacs-llp bash

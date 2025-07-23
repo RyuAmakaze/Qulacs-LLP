@@ -15,6 +15,8 @@ NQUBIT = 4
 C_DEPTH = 4
 # パラメータ最適化の最大イテレーション回数
 MAX_ITER = 100
+# 並列計算に使用するスレッド数
+N_WORKERS = 1
 # LLP bag size
 BAG_SIZE = 100
 

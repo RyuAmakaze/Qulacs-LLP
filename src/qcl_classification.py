@@ -2,6 +2,7 @@ import numpy as np
 from qulacs import QuantumState, Observable, QuantumCircuit, ParametricQuantumCircuit
 from sklearn.metrics import log_loss
 from scipy.optimize import minimize
+from joblib import Parallel, delayed
 from qcl_utils import create_time_evol_gate, min_max_scaling, softmax
 
 
@@ -24,15 +25,17 @@ from tqdm import tqdm
 
 class QclClassification:
     """ quantum circuit learningを用いて分類問題を解く"""
-    def __init__(self, nqubit, c_depth, num_class=None):
+    def __init__(self, nqubit, c_depth, num_class=None, n_jobs=1):
         """
         :param nqubit: qubitの数。必要とする出力の次元数よりも多い必要がある
         :param c_depth: circuitの深さ
         :param num_class: 分類の数（=測定するqubitの数）。``None``の場合は
                           ``fit`` 時に ``y_list`` から自動で決定する。
+        :param n_jobs: 並列計算に使用するスレッド数
         """
         self.nqubit = nqubit
         self.c_depth = c_depth
+        self.n_jobs = n_jobs
 
         self.input_state_list = []  # |ψ_in>のリスト
         self.theta = []  # θのリスト
@@ -107,6 +110,11 @@ class QclClassification:
         theta = [self.output_gate.get_parameter(ind) for ind in range(parameter_count)]
         return np.array(theta)
 
+    def _pred_state(self, st):
+        self.output_gate.update_quantum_state(st)
+        r = [o.get_expectation_value(st) for o in self.obs]
+        return softmax(r)
+
     def pred(self, theta):
         """x_listに対して、モデルの出力を計算"""
 
@@ -116,16 +124,14 @@ class QclClassification:
         # U_outの更新
         self.update_output_gate(theta)
 
-        res = []
         # 出力状態計算 & 観測
-        for st in tqdm(st_list, desc="pred instance"):
-            # U_outで状態を更新
-            self.output_gate.update_quantum_state(st)
-            # モデルの出力
-            r = [o.get_expectation_value(st) for o in self.obs]  # 出力多次元ver
-            r = softmax(r)
-            res.append(r.tolist())
-        return np.array(res)
+        if self.n_jobs == 1:
+            res = [self._pred_state(st) for st in tqdm(st_list, desc="pred instance")]
+        else:
+            res = Parallel(n_jobs=self.n_jobs, backend="threading")(
+                delayed(self._pred_state)(st) for st in st_list
+            )
+        return np.array([r.tolist() for r in res])
 
     def bag_pred(self, theta, bag_size):
         """Return predicted class proportions for each bag."""
@@ -159,11 +165,20 @@ class QclClassification:
     # for BFGS
     def B_grad(self, theta):
         # dB/dθのリストを返す
-        theta_plus = [theta.copy() + np.eye(len(theta))[i] * np.pi / 2. for i in range(len(theta))]
-        theta_minus = [theta.copy() - np.eye(len(theta))[i] * np.pi / 2. for i in range(len(theta))]
+        def single(i):
+            th_p = theta.copy()
+            th_p[i] += np.pi / 2.
+            th_m = theta.copy()
+            th_m[i] -= np.pi / 2.
+            return (self.pred(th_p) - self.pred(th_m)) / 2.
 
-        grad = [(self.pred(theta_plus[i]) - self.pred(theta_minus[i])) / 2. for i in range(len(theta))]
-
+        indices = range(len(theta))
+        if self.n_jobs == 1:
+            grad = [single(i) for i in indices]
+        else:
+            grad = Parallel(n_jobs=self.n_jobs, backend="threading")(
+                delayed(single)(i) for i in indices
+            )
         return np.array(grad)
 
     # for BFGS

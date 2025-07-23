@@ -11,6 +11,7 @@ from config import (
     C_DEPTH,
     MAX_ITER,
     BAG_SIZE,
+    N_WORKERS,
 )
 
 from qcl_classification import QclClassification
@@ -51,7 +52,7 @@ def main():
     teacher_props = np.array(teacher_probs_list)
 
     np.random.seed(SEED)
-    qcl = QclClassification(NQUBIT, C_DEPTH, num_class)
+    qcl = QclClassification(NQUBIT, C_DEPTH, num_class, n_jobs=N_WORKERS)
     _, _, theta_opt = qcl.fit_bags(
         x_bag,
         teacher_props,
