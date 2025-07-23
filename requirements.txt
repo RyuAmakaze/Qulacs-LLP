@@ -74,3 +74,4 @@ pandas
 qulacs-gpu
 scikit-learn
 matplotlib
+joblib
