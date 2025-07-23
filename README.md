@@ -17,5 +17,5 @@ GPUアクセラレーションを利用するため、Docker イメージでは 
 
 Dockerに入るだけ
 ```bash
-docker run --rm --gpus all -v $(pwd):/app -w /app -it qulacs-llp bash
+docker run --rm --shm-size=8g --gpus all -v $(pwd):/app -w /app -it qulacs-llp bash
 ```
