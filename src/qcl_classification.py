@@ -294,7 +294,7 @@ class QclClassification:
             self.theta,
             args=(bag_size, loss),
             method="BFGS",
-            jac=lambda th: self.bag_cost_func_grad(th, bag_size, loss),
+            jac=self.bag_cost_func_grad,
             options={"maxiter": maxiter},
             callback=self.callbackF,
         )
