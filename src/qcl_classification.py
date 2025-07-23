@@ -4,6 +4,21 @@ from sklearn.metrics import log_loss
 from scipy.optimize import minimize
 from qcl_utils import create_time_evol_gate, min_max_scaling, softmax
 
+
+def cross_entropy(p, q):
+    """Return mean cross-entropy between two distributions."""
+    eps = 1e-12
+    q = np.clip(q, eps, 1.0)
+    return -np.sum(p * np.log(q)) / len(p)
+
+
+def kl_divergence(p, q):
+    """Return mean KL-divergence between two distributions."""
+    eps = 1e-12
+    p = np.clip(p, eps, 1.0)
+    q = np.clip(q, eps, 1.0)
+    return np.sum(p * np.log(p / q)) / len(p)
+
 from tqdm import tqdm
 
 
@@ -112,6 +127,16 @@ class QclClassification:
             res.append(r.tolist())
         return np.array(res)
 
+    def bag_pred(self, theta, bag_size):
+        """Return predicted class proportions for each bag."""
+        inst_pred = self.pred(theta)
+        num_bag = len(inst_pred) // bag_size
+        bag_preds = []
+        for i in range(num_bag):
+            bag = inst_pred[i * bag_size : (i + 1) * bag_size]
+            bag_preds.append(bag.mean(axis=0))
+        return np.array(bag_preds)
+
     def cost_func(self, theta):
         """コスト関数を計算するクラス
         :param theta: 回転ゲートの角度thetaのリスト
@@ -121,8 +146,15 @@ class QclClassification:
 
         # cross-entropy loss
         loss = log_loss(self.y_list, y_pred)
-        
+
         return loss
+
+    def bag_cost_func(self, theta, bag_size, loss="ce"):
+        """Cost function comparing bag proportions."""
+        preds = self.bag_pred(theta, bag_size)
+        if loss == "kl":
+            return kl_divergence(self.teacher_props, preds)
+        return cross_entropy(self.teacher_props, preds)
 
     # for BFGS
     def B_grad(self, theta):
@@ -140,6 +172,23 @@ class QclClassification:
         B_gr_list = self.B_grad(theta)
         grad = [np.sum(y_minus_t * B_gr) for B_gr in B_gr_list]
         return np.array(grad)
+
+    def bag_cost_func_grad(self, theta, bag_size, loss="ce"):
+        bag_pred = self.bag_pred(theta, bag_size)
+        if loss == "kl":
+            y_minus_t = bag_pred - self.teacher_props
+        else:
+            y_minus_t = bag_pred - self.teacher_props
+        B_gr_list = self.B_grad(theta)
+        grad_vals = []
+        num_bag = len(bag_pred)
+        for B_gr in B_gr_list:
+            bag_B_gr = []
+            for i in range(num_bag):
+                bag_B_gr.append(B_gr[i * bag_size : (i + 1) * bag_size].mean(axis=0))
+            bag_B_gr = np.array(bag_B_gr)
+            grad_vals.append(np.sum(y_minus_t * bag_B_gr))
+        return np.array(grad_vals)
 
     def fit(self, x_list, y_list, maxiter=1000):
         """
@@ -199,9 +248,67 @@ class QclClassification:
         return result, theta_init, theta_opt
 
     def callbackF(self, theta):
-            self.n_iter = self.n_iter + 1
-            if 10 * self.n_iter % self.maxiter == 0:
-                print(f"Iteration: {self.n_iter} / {self.maxiter},   Value of cost_func: {self.cost_func(theta):.4f}")
+        self.n_iter = self.n_iter + 1
+        if 10 * self.n_iter % self.maxiter == 0:
+            if hasattr(self, "teacher_props"):
+                val = self.bag_cost_func(theta, self.bag_size)
+            else:
+                val = self.cost_func(theta)
+            print(
+                f"Iteration: {self.n_iter} / {self.maxiter},   Value of cost_func: {val:.4f}"
+            )
+
+    def fit_bags(self, x_list, teacher_props, bag_size, maxiter=1000, loss="ce"):
+        """Fit model using bag-level label proportions."""
+
+        if self.num_class is None:
+            self.num_class = teacher_props.shape[1]
+            self._initialize_observable()
+        elif self.obs is None:
+            self._initialize_observable()
+
+        if teacher_props.shape[1] != self.num_class:
+            raise ValueError("teacher_props and num_class mismatch")
+
+        self.set_input_state(x_list)
+        self.create_initial_output_gate()
+        theta_init = self.theta
+
+        self.teacher_props = teacher_props
+        self.bag_size = bag_size
+
+        self.n_iter = 0
+        self.maxiter = maxiter
+
+        print("Initial parameter:")
+        print(self.theta)
+        print()
+        print(
+            f"Initial value of cost function:  {self.bag_cost_func(self.theta, bag_size, loss):.4f}"
+        )
+        print()
+        print("============================================================")
+        print("Iteration count...")
+        result = minimize(
+            self.bag_cost_func,
+            self.theta,
+            args=(bag_size, loss),
+            method="BFGS",
+            jac=lambda th: self.bag_cost_func_grad(th, bag_size, loss),
+            options={"maxiter": maxiter},
+            callback=self.callbackF,
+        )
+        theta_opt = self.theta
+        print("============================================================")
+        print()
+        print("Optimized parameter:")
+        print(self.theta)
+        print()
+        print(
+            f"Final value of cost function:  {self.bag_cost_func(self.theta, bag_size, loss):.4f}"
+        )
+        print()
+        return result, theta_init, theta_opt
 
 
 def main():
