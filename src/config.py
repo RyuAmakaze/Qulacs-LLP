@@ -16,6 +16,9 @@ C_DEPTH = 4
 # パラメータ最適化の最大イテレーション回数
 MAX_ITER = 100
 
+# Number of instances per bag for LLP
+BAG_SIZE = 100
+
 # Paths to pre-extracted feature datasets
 TRAIN_DATA_PATH = "data/CIFAR10_test_features.pt"
 TEST_DATA_PATH = "data/CIFAR10_test_features.pt"
