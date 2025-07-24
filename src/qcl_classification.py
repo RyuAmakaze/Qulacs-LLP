@@ -110,7 +110,7 @@ class QclClassification:
 
         res = []
         # 出力状態計算 & 観測
-        for st in tqdm(st_list, desc="pred instance"):
+        for st in st_list:
             # U_outで状態を更新
             self.output_gate.update_quantum_state(st)
             # モデルの出力
