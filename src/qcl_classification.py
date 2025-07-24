@@ -137,7 +137,9 @@ class QclClassification:
         theta_plus = [theta.copy() + np.eye(len(theta))[i] * np.pi / 2. for i in range(len(theta))]
         theta_minus = [theta.copy() - np.eye(len(theta))[i] * np.pi / 2. for i in range(len(theta))]
 
-        grad = [(self.pred(theta_plus[i]) - self.pred(theta_minus[i])) / 2. for i in range(len(theta))]
+        grad = []
+        for i in tqdm(range(len(theta)), desc="param", leave=False):
+            grad.append((self.pred(theta_plus[i]) - self.pred(theta_minus[i])) / 2.)
 
         return np.array(grad)
 
