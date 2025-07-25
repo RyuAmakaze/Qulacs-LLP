@@ -25,3 +25,9 @@ PCA_DIM = 4
 
 # Whether to use GPU acceleration with qulacs
 USE_GPU = False
+
+# Size of each bag used in LLP training
+BAG_SIZE = 100
+
+# Loss type used for bag proportion comparison. "cross_entropy" or "kl".
+LOSS_TYPE = "cross_entropy"
