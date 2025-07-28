@@ -1,6 +1,7 @@
 import numpy as np
 from config import USE_GPU
 from qulacs import QuantumState, Observable, QuantumCircuit, ParametricQuantumCircuit
+from qulacs.state import inner_product
 try:
     from qulacs import QuantumStateGpu
 except ImportError:  # CPU-only installation
@@ -119,6 +120,30 @@ class QclClassification:
             res.append(r.tolist())
         return np.array(res)
 
+    def pred_amplitude(self, x_list):
+        """Return class probabilities using state amplitudes."""
+
+        x_scaled = min_max_scaling(x_list)
+        res = []
+        for x in x_scaled:
+            circuit = self.output_gate.copy()
+            gate = self.create_input_gate(x)
+            for idx in reversed(range(gate.get_gate_count())):
+                circuit.add_gate(gate.get_gate(idx), position=0)
+
+            state = QuantumState(self.nqubit)
+            state.set_zero_state()
+            circuit.update_quantum_state(state)
+
+            probs = []
+            for cls in range(self.num_class):
+                target = QuantumState(self.nqubit)
+                target.set_computational_basis(1 << cls)
+                amp = inner_product(target, state)
+                probs.append(abs(amp) ** 2)
+            res.append(softmax(np.log(np.array(probs) + 1e-10)))
+        return np.array(res)
+
     def cost_func(self, theta):
         """コスト関数を計算するクラス
         :param theta: 回転ゲートの角度thetaのリスト
@@ -206,6 +231,69 @@ class QclClassification:
         print(f"Final value of cost function:  {self.cost_func(self.theta):.4f}")
         print()
         return result, theta_init, theta_opt
+
+    def fit_backprop_inner_product(self, x_list, y_label, lr=0.1, n_iter=100):
+        """Gradient descent training using ``backprop_inner_product``.
+
+        Parameters
+        ----------
+        x_list : array-like
+            Training features.
+        y_label : array-like
+            Class labels as integers or one-hot vectors.
+        lr : float, default 0.1
+            Learning rate for gradient descent.
+        n_iter : int, default 100
+            Number of optimization steps.
+        """
+
+        labels = np.argmax(y_label, axis=1) if y_label.ndim > 1 else y_label
+        if self.num_class is None:
+            self.num_class = int(labels.max()) + 1
+            self._initialize_observable()
+
+        x_scaled = min_max_scaling(x_list)
+        input_gates = [self.create_input_gate(x) for x in x_scaled]
+
+        self.create_initial_output_gate()
+
+        for step in range(n_iter):
+            total_grad = np.zeros_like(self.theta)
+            total_loss = 0.0
+
+            for gate, label in zip(input_gates, labels):
+                circuit = self.output_gate.copy()
+                for idx in reversed(range(gate.get_gate_count())):
+                    circuit.add_gate(gate.get_gate(idx), position=0)
+
+                state = QuantumState(self.nqubit)
+                state.set_zero_state()
+                circuit.update_quantum_state(state)
+
+                target = QuantumState(self.nqubit)
+                target.set_computational_basis(1 << label)
+
+                amp = inner_product(target, state)
+                prob = abs(amp) ** 2
+                total_loss += -np.log(prob + 1e-10)
+
+                grads_complex = circuit.backprop_inner_product(target)
+                grads = [
+                    -2 * np.real(np.conj(amp) * dpsi) / (prob + 1e-10)
+                    for dpsi in grads_complex
+                ]
+                total_grad += np.array(grads)
+
+            total_grad /= len(labels)
+            for i, grad in enumerate(total_grad):
+                theta = self.output_gate.get_parameter(i)
+                self.output_gate.set_parameter(i, theta - lr * grad)
+            self.theta = self.get_output_gate_parameter()
+
+            if step % 10 == 0 or step == n_iter - 1:
+                print(f"[{step:03d}] loss={total_loss/len(labels):.6f}")
+
+        return self.theta
 
     def callbackF(self, theta):
             self.n_iter = self.n_iter + 1
