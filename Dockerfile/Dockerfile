@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -y \
     git build-essential cmake libopenblas-dev libboost-all-dev tzdata \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Python packages
 RUN pip install --no-cache-dir \
     pytest==8.3.5 \
     matplotlib \
@@ -20,17 +19,17 @@ RUN pip install --no-cache-dir \
     dotenv \
     numpy==1.26.0
 
-# Qulacs 最新版（backprop_inner_product 対応）をソースからビルド
+# Qulacs ソースを clone してビルド
 RUN git clone --recursive https://github.com/qulacs/qulacs.git /app/qulacs && \
     mkdir -p /app/qulacs/build && cd /app/qulacs/build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=ON -DUSE_GPU=ON -DCMAKE_INSTALL_PREFIX=/usr/local && \
-    make -j && make install
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON=ON -DUSE_GPU=ON && \
+    make -j
 
-# Python バインディングをインストール
+# Python バインディングを pip 経由でインストール（qulacs_core.so が含まれる）
 RUN pip install /app/qulacs
 
-# 必要ファイルを追加
 COPY . /app
 
-# CMD（必要に応じて変更）
 CMD ["python", "src/train.py"]
+
+RUN cp /app/qulacs/build/python/qulacs_core*.so $(python -c "import site; print(site.getsitepackages()[0])")
