@@ -11,7 +11,7 @@ from scipy.optimize import minimize
 from qcl_utils import create_time_evol_gate, min_max_scaling, softmax
 
 from tqdm import tqdm
-
+from joblib import Parallel, delayed
 
 class QclClassification:
     """ quantum circuit learningを用いて分類問題を解く"""
