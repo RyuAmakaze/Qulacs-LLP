@@ -16,12 +16,12 @@ from config import (
 
 from qcl_classification import QclClassification
 from data_utils import load_pt_features, create_random_bags
-from qulacs import QuantumState, QuantumStateGpu
+from qulacs import QuantumState
 from config import USE_GPU
 
 
 def main():
-    state = QuantumStateGpu(NQUBIT) if USE_GPU else QuantumState(NQUBIT)
+    state = QuantumState(NQUBIT)
     print(state.get_device_name())
 
     x_train, x_test, y_train_label, y_test_label = load_pt_features(
@@ -60,4 +60,16 @@ def main():
 
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv
+    import debugpy
+    import os
+
+    load_dotenv()
+
+    if os.getenv("DEBUGPY_STARTED") != "1":
+        os.environ["DEBUGPY_STARTED"] = "1"
+        port = int(os.getenv("DEBUG_PORT", 5611))
+        print(f"🔍 Waiting for debugger attach on port {port}...")
+        debugpy.listen(("0.0.0.0", port))
+        debugpy.wait_for_client()
     main()
