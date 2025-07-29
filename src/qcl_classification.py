@@ -282,6 +282,7 @@ class QclClassification:
                     -2 * np.real(np.conj(amp) * dpsi) / (prob + 1e-10)
                     for dpsi in grads_complex
                 ]
+                print(grads)
                 total_grad += np.array(grads)
 
             total_grad /= len(labels)
@@ -338,16 +339,32 @@ class QclClassification:
 
         self.create_initial_output_gate()
 
-        target_states = [QuantumState(self.nqubit) for _ in range(self.num_class)]
-        for cls, st in enumerate(target_states):
-            st.set_computational_basis(1 << cls)
-
         bag_list = [indices for indices in bag_sampler if len(indices) > 0]
+        
+        def probs_to_quantum_state(t_probs: np.ndarray, nqubit: int) -> QuantumState:
+            dim = 2 ** nqubit
+            if len(t_probs) > dim:
+                raise ValueError(f"Length of t_probs ({len(t_probs)}) exceeds 2^nqubit ({dim})")
 
-        def bag_grad_and_loss(indices, t_probs):
-            bag_prob_raw = np.zeros(self.num_class)
-            bag_grad_raw = np.zeros((self.num_class, len(self.theta)))
-            for idx in indices:
+            # 振幅ベクトルの初期化（複素数型）
+            amplitudes = np.zeros(dim, dtype=np.complex128)
+            
+            # クラス数分だけ sqrt を入れて、残りは 0 のまま
+            amplitudes[:len(t_probs)] = np.sqrt(t_probs)
+            
+            # 正規化（量子状態の条件）
+            amplitudes /= np.linalg.norm(amplitudes)
+
+            # QuantumState に読み込む
+            qs = QuantumState(nqubit)
+            qs.load(amplitudes)
+            return qs
+        
+        def bag_grad_and_loss(bag_indices, t_probs):
+            target_state = probs_to_quantum_state(t_probs, self.nqubit)
+            bag_grad = np.zeros_like(self.theta)
+            total_loss = 0
+            for idx in bag_indices:
                 gate = input_gates[idx]
                 circuit = self.output_gate.copy()
                 for gidx in reversed(range(gate.get_gate_count())):
@@ -357,39 +374,18 @@ class QclClassification:
                 state.set_zero_state()
                 circuit.update_quantum_state(state)
 
-                for cls, target in enumerate(target_states):
-                    amp = inner_product(target, state)
-                    prob = abs(amp) ** 2
-                    bag_prob_raw[cls] += prob
-                    grads_c = circuit.backprop_inner_product(target)
-                    grad_prob = 2 * np.real(np.conj(amp) * np.array(grads_c))
-                    bag_grad_raw[cls] += grad_prob
+                amp = inner_product(target_state, state)
+                prob = abs(amp) ** 2
+                total_loss += -np.log(prob + 1e-10)
 
-            bag_prob_raw /= len(indices)
-            bag_grad_raw /= len(indices)
+                grads_complex = circuit.backprop_inner_product(target_state)
+                grads = [
+                    -2 * np.real(np.conj(amp) * dpsi) / (prob + 1e-10)
+                    for dpsi in grads_complex
+                ]
+                bag_grad += np.array(grads)
 
-            z = np.log(bag_prob_raw + 1e-10)
-            p = np.exp(z) / np.sum(np.exp(z))
-
-            if loss == "ce":
-                l = -np.sum(t_probs * np.log(p + 1e-10))
-            elif loss == "kl":
-                l = np.sum(t_probs * np.log(t_probs / (p + 1e-10)))
-            else:
-                raise ValueError("loss must be 'ce' or 'kl'")
-
-            dL_dp = -t_probs / (p + 1e-10)
-            dp_dz = np.diag(p) - np.outer(p, p)
-            dL_dz = dp_dz @ dL_dp
-            dL_dbraw = dL_dz / (bag_prob_raw + 1e-10)
-
-            grad = np.zeros(len(self.theta))
-            for cls in range(self.num_class):
-                grad += dL_dbraw[cls] * bag_grad_raw[cls]
-                
-            if np.isnan(l):
-                print("loss is nan!")
-            return l, grad
+            return total_loss, bag_grad
 
         for step in tqdm(range(n_iter), desc="bag"):
             results = Parallel(n_jobs=n_jobs, backend="threading")(
