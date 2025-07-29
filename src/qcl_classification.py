@@ -342,7 +342,7 @@ class QclClassification:
         for cls, st in enumerate(target_states):
             st.set_computational_basis(1 << cls)
 
-        bag_list = list(bag_sampler)
+        bag_list = [indices for indices in bag_sampler if len(indices) > 0]
 
         def bag_grad_and_loss(indices, t_probs):
             bag_prob_raw = np.zeros(self.num_class)
@@ -386,9 +386,12 @@ class QclClassification:
             grad = np.zeros(len(self.theta))
             for cls in range(self.num_class):
                 grad += dL_dbraw[cls] * bag_grad_raw[cls]
+                
+            if np.isnan(l):
+                print("loss is nan!")
             return l, grad
 
-        for step in range(n_iter):
+        for step in tqdm(range(n_iter), desc="bag"):
             results = Parallel(n_jobs=n_jobs, backend="threading")(
                 delayed(bag_grad_and_loss)(indices, teacher[i])
                 for i, indices in enumerate(bag_list)
@@ -396,7 +399,7 @@ class QclClassification:
 
             losses, grads = zip(*results)
             avg_grad = np.mean(grads, axis=0)
-            avg_loss = np.mean(losses)
+            avg_loss = np.nanmean(losses)
 
             for i, grad in enumerate(avg_grad):
                 theta = self.output_gate.get_parameter(i)
