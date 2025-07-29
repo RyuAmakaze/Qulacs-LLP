@@ -15,7 +15,7 @@ from config import (
 )
 
 from qcl_classification import QclClassification
-from data_utils import load_pt_features, create_fixed_proportion_batches
+from data_utils import load_pt_features, create_random_bags
 from qulacs import QuantumState, QuantumStateGpu
 from config import USE_GPU
 
@@ -36,15 +36,13 @@ def main():
         torch.tensor(y_train_label, dtype=torch.long),
     )
 
-    num_bags = len(train_ds) // BAG_SIZE
-    teacher_probs = np.random.dirichlet(np.ones(num_class), size=num_bags)
-    bag_sampler = create_fixed_proportion_batches(train_ds, teacher_probs, BAG_SIZE, num_class)
+    bag_sampler, teacher_probs = create_random_bags(train_ds, BAG_SIZE, num_class, shuffle=True)
 
     qcl = QclClassification(NQUBIT, C_DEPTH, num_class)
     qcl.fit_llp_inner_product(
         x_train,
         bag_sampler,
-        torch.tensor(teacher_probs, dtype=torch.float32),
+        teacher_probs,
         n_iter=MAX_ITER,
         lr=0.1,
         loss="ce",
