@@ -342,20 +342,25 @@ class QclClassification:
         bag_list = [indices for indices in bag_sampler if len(indices) > 0]
         
         def probs_to_quantum_state(t_probs: np.ndarray, nqubit: int) -> QuantumState:
-            dim = 2 ** nqubit
-            if len(t_probs) > dim:
-                raise ValueError(f"Length of t_probs ({len(t_probs)}) exceeds 2^nqubit ({dim})")
+            """Encode class probabilities into computational basis amplitudes.
 
-            # 振幅ベクトルの初期化（複素数型）
+            Each class ``i`` corresponds to the basis state ``|1<<i>``.
+            The probability distribution ``t_probs`` is loaded by assigning
+            ``sqrt(t_probs[i])`` to that basis index.
+            """
+
+            dim = 2 ** nqubit
+            indices = [1 << i for i in range(len(t_probs))]
+            if len(indices) == 0 or max(indices) >= dim:
+                raise ValueError(
+                    f"Class basis indices {indices} exceed dimension {dim} for {nqubit} qubits"
+                )
+
             amplitudes = np.zeros(dim, dtype=np.complex128)
-            
-            # クラス数分だけ sqrt を入れて、残りは 0 のまま
-            amplitudes[:len(t_probs)] = np.sqrt(t_probs)
-            
-            # 正規化（量子状態の条件）
+            amplitudes[indices] = np.sqrt(t_probs)
+
             amplitudes /= np.linalg.norm(amplitudes)
 
-            # QuantumState に読み込む
             qs = QuantumState(nqubit)
             qs.load(amplitudes)
             return qs
