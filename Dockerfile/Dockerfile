@@ -26,7 +26,7 @@ RUN git clone --recursive https://github.com/qulacs/qulacs.git /app/qulacs && \
     make -j
 
 # Python バインディングを pip 経由でインストール（qulacs_core.so が含まれる）
-RUN pip install /app/qulacs
+RUN USE_GPU=ON pip install /app/qulacs
 
 COPY . /app
 
